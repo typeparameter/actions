@@ -1,0 +1,44 @@
+name: Conventional PR title
+description: Lint the pull request title against Conventional Commits and write the result to the job summary.
+
+runs:
+  using: composite
+  steps:
+    - name: Lint PR title
+      id: lint
+      uses: amannn/action-semantic-pull-request@v6
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Write lint error to job summary
+      if: always() && steps.lint.outputs.error_message != ''
+      shell: bash
+      env:
+        ERROR_MESSAGE: ${{ steps.lint.outputs.error_message }}
+      run: |
+        {
+          echo '### ❌ PR title needs to be adjusted'
+          echo
+          echo 'This project requires pull request titles to follow the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/).'
+          echo
+          echo '```'
+          printf '%s\n' "$ERROR_MESSAGE"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Write release info to job summary
+      if: steps.lint.outcome == 'success'
+      shell: bash
+      env:
+        WILL_RELEASE: ${{ contains(fromJSON('["feat","fix"]'), steps.lint.outputs.type) || contains(github.event.pull_request.title, '!:') }}
+      run: |
+        if [[ "$WILL_RELEASE" == "true" ]]; then
+          specifier='will create a release'
+        else
+          specifier='will not create a release'
+        fi
+        {
+          echo '### ✅ PR title is valid'
+          echo
+          echo "This pull request **${specifier}**, as determined by applying the pull request title to the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/)."
+        } >> "$GITHUB_STEP_SUMMARY"
