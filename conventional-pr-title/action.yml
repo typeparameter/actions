@@ -1,5 +1,5 @@
 name: Conventional PR title
-description: Lint the pull request title against Conventional Commits and write the result to the job summary.
+description: Lint the pull request title against Conventional Commits and report the result as PR comments and in the job summary.
 
 runs:
   using: composite
@@ -27,6 +27,7 @@ runs:
         } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Write release info to job summary
+      id: release
       if: steps.lint.outcome == 'success'
       shell: bash
       env:
@@ -42,3 +43,32 @@ runs:
           echo
           echo "This pull request **${specifier}**, as determined by applying the pull request title to the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/)."
         } >> "$GITHUB_STEP_SUMMARY"
+        echo "specifier=${specifier}" >> "$GITHUB_OUTPUT"
+
+    - name: Display lint error as comment
+      if: always() && steps.lint.outputs.error_message != ''
+      uses: marocchino/sticky-pull-request-comment@v3
+      with:
+        header: lint-error
+        message: |
+          Thanks for opening a pull request! This project requires pull request titles to follow the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/), and it looks like your proposed title needs to be adjusted.
+
+          Details:
+          ```
+          ${{ steps.lint.outputs.error_message }}
+          ```
+
+    - name: Remove lint error comment
+      if: steps.lint.outcome == 'success'
+      uses: marocchino/sticky-pull-request-comment@v3
+      with:
+        header: lint-error
+        delete: true
+
+    - name: Display release info as comment
+      if: steps.lint.outcome == 'success'
+      uses: marocchino/sticky-pull-request-comment@v3
+      with:
+        header: release-info
+        message: |
+          This pull request **${{ steps.release.outputs.specifier }}**, as determined by applying the pull request title to the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/).

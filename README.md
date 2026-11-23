@@ -2,14 +2,16 @@
 
 ## `conventional-pr-title`
 
-Lints the pull request title against [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and writes the result to the job summary: either the lint error, or whether the PR would create a release. It needs only `pull-requests: read`, and is meant to run on `pull_request` (not `pull_request_target`).
+Lints the pull request title against [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and reports the result as PR comments and in the job summary. It needs `pull-requests: write` to comment, so it runs on `pull_request_target`. PR-controlled values never reach a shell, and it never checks out PR code.
+
+Public repos must allow `pull_request_target` for this workflow under Settings → Actions → Policies.
 
 ### Example workflow
 
 ```yaml
 name: PR
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
     types:
       - opened
@@ -18,7 +20,7 @@ on:
       - reopened
 
 permissions:
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   validate:
